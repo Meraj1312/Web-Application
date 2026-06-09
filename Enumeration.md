@@ -1,4 +1,4 @@
-# Gobuster #
+# Gobuster (Directories) # 
 
 *Always add 403*
 ```
@@ -12,4 +12,9 @@ gobuster dir -u http://target -w /usr/share/wordlists/SecLists/Discovery/Web-Con
 ```
 ```
 gobuster dir -u http:/target -w /usr/share/wordlists/SecLists/Discovery/Web-Content/common.txt -x php,html,cgi,php5,sh,pl -s 200,301,302,303,403 -b ""
+```
+
+# Ffuf (Subdomain) #
+```
+ffuf -w /usr/share/wordlists/SecLists/Discovery/DNS/subdomains-top1million-110000.txt -u http://target.com -H "Host: FUZZ.target.com" -fs {filter size}
 ```
