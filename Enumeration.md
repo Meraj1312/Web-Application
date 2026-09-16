@@ -17,3 +17,8 @@ ffuf -u http://target/FUZZ -w /usr/share/wordlists/SecLists/Discovery/Web-Conten
 ```
 ffuf -w /usr/share/wordlists/SecLists/Discovery/DNS/subdomains-top1million-110000.txt -u http://target.com -H "Host: FUZZ.target.com" -fs {filter size}
 ```
+
+# Dnsenum #
+```
+dnsenum --enum inlanefreight.com -f  /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-110000.txt
+```
